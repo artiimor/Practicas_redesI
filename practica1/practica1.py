@@ -86,8 +86,6 @@ if __name__ == "__main__":
 	elif ret == 0:
 		logging.debug('No mas paquetes o limite superado')
 	logging.info('{} paquetes procesados'.format(num_paquete)) #when it ends we show the number of packages
-
-	#TODO si se ha creado un dumper cerrarlo
 	
 	#close descriptors
 	if handle is not None:
