@@ -36,6 +36,7 @@ def procesa_paquete(us,header,data):
 	if pdumper is None:
 		pdumper = pcap_dump_open(handle,'captura.' + args.interface + str(header.ts.tv_sec + TIME_OFFSET))
 	#TODO imprimir los N primeros bytes
+	print (data[:args.nbytes])
 	#Escribir el tráfico al fichero de captura con el offset temporal
 	pcap_dump(pdumper, header, data)
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
 	pdumper = None
 	
 	#open the interface for capture it. When its open_live we want to capture the package complete
-	handle = pcap_open_live(args.interface, args.nbytes, NO_PROMISC, ETH_FRAME_MAX, errbuf)
+	handle = pcap_open_live(args.interface, ETH_FRAME_MAX, NO_PROMISC, 1000, errbuf)
 	#check it went right
 	if handle is None:
 		print ("No se ha capturado nada")
