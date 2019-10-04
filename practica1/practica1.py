@@ -34,9 +34,14 @@ def procesa_paquete(us,header,data):
 	num_paquete += 1	
 	#create the dumper
 	if pdumper is None:
-		pdumper = pcap_dump_open(handle,'captura.' + args.interface + str(header.ts.tv_sec + TIME_OFFSET))
-	#TODO imprimir los N primeros bytes
-	print (data[:args.nbytes])
+		descriptor = pcap_open_dead(DLT_EN10MB, ETH_FRAME_MAX)
+		if args.interface is not False:
+			pdumper = pcap_dump_open(descriptor, 'captura.' + str(args.interface) + str(header.ts.tv_sec + TIME_OFFSET) + '.pcap')
+		else:
+			pdumper = pcap_dump_open(descriptor, 'captura.file.' + args.tracefile + str(header.ts.tv_sec + TIME_OFFSET) + '.pcap')
+	
+	#imprimimos los N primeros bytes
+	print (binascii.hexlify(data[:args.nbytes]))
 	#Escribir el tráfico al fichero de captura con el offset temporal
 	pcap_dump(pdumper, header, data)
 
@@ -70,12 +75,23 @@ if __name__ == "__main__":
 	handle = None
 	pdumper = None
 	
-	#open the interface for capture it. When its open_live we want to capture the package complete
-	handle = pcap_open_live(args.interface, ETH_FRAME_MAX, NO_PROMISC, 1000, errbuf)
-	#check it went right
-	if handle is None:
-		print ("No se ha capturado nada")
-		sys.exit(-1)
+	#case --itf
+	if args.interface is not False:
+		#open the interface for capture it. When its open_live we want to capture the package complete
+		handle = pcap_open_live(args.interface, ETH_FRAME_MAX, NO_PROMISC, 1000, errbuf)
+		#check it went right
+		if handle is None:
+			print ("No se ha capturado nada")
+			sys.exit(-1)
+		#case --itf
+	elif args.tracefile is not False:
+		#open the file
+		handle = pcap_open_offline(args.tracefile, errbuf)
+		#check it went right
+		if handle is None:
+			print ("No se ha capturado nada")
+			sys.exit(-1)
+
 
 	
 	#loop. It is interrupted when we send SIGINT, when it reads all the packages or when there's an error
