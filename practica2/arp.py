@@ -24,7 +24,6 @@ broadcastAddr = bytes([0xFF]*6)
 ARPHeader = bytes([0x00,0x01,0x08,0x00,0x06,0x04])
 #longitud (en bytes) de la cabecera común ARP
 ARP_HLEN = 6
-
 #Variable que alamacenará que dirección IP se está intentando resolver
 requestedIP = None
 #Variable que alamacenará que dirección MAC resuelta o None si no se ha podido obtener
@@ -94,9 +93,8 @@ Retorno: Ninguno
 '''
 def processARPRequest(data, MAC):
 
-    logging.debug('Función no implementada')
-
-    # TODO del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
+    global myIP
+    # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     mac_origen = data[:6]
     if mac_origen != MAC:
         return
@@ -107,13 +105,11 @@ def processARPRequest(data, MAC):
     # del byte 16 al 20 (20 no incluido) esta la ip destino
     ip_destino = data[16:20]
 
-    # TODO no se cual es mi propia ip
-    my_ip = 2
-
-    if ip_destino != my_ip:
+    # Comprobamos con la variable local
+    if ip_destino != myIP:
         return
 
-    # TODO aqui envio cosas bastante al azar la verdad
+    # TODO revisar que esta bien
     createARPReply(ip_origen, mac_origen)
     sendEthernetFrame(data, len, data, mac_origen)
     return
@@ -143,10 +139,9 @@ Retorno: Ninguno
 '''
 def processARPReply(data,MAC):
 
-    global requestedIP,resolvedMAC,awaitingResponse,cache
-    logging.debug('Función no implentada')
+    global requestedIP,resolvedMAC,awaitingResponse,cache, myIP
 
-    # TODO del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
+    # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     mac_origen = data[:6]
     if mac_origen != MAC:
         return
@@ -160,19 +155,20 @@ def processARPReply(data,MAC):
     # del byte 16 al 20 (20 no incluido) esta la ip destino
     ip_destino = data[16:20]
 
-    # TODO no se cual es mi propia ip
-    my_ip = 2
-
-    if ip_destino != my_ip:
+    if ip_destino != myIP:
         return
 
     if ip_origen != requestedIP:
         return
 
-    # TODO esto hay que protegerlo con lock()
-    resolvedMAC = mac_origen
+    # Protegemos con lock usando el bloque with
+    with globalLock:
+        resolvedMAC = mac_origen
+
+    with cacheLock:
+        cache = {ip_origen: mac_origen}
     # aniadimos el par ip/mac , son las de origen porque el arp reply tiene como origen las de destino del arp request
-    cache = {ip_origen: mac_origen}
+
     awaitingResponse = False
     requestedIP = None
 
