@@ -184,14 +184,16 @@ Retorno: Bytes con el contenido de la trama de petición ARP
 def createARPRequest(ip):
 
     global myMAC,myIP
-    frame = bytes()
-    logging.debug('Función no implementada')
-    #TODO implementar aqui
+
+    # falta la parte de la cabecera comun (type of hardware etc)
+    # no se si hay que enviarla a [0xFF]*6 o a [0x00]*6 porque es una request
+    framechar = str(myMAC) + str(myIP) + str([0xFF]*6) + str(ip)
+    frame = bytes(framechar)
+
     return frame
 
 
-def createARPReply(IP,MAC):
-    '''
+'''
 Nombre: createARPReply
 Descripción: Esta función construye una respuesta ARP y devuelve la trama con el contenido.
 Argumentos:
@@ -199,14 +201,17 @@ Argumentos:
     -MAC: dirección MAC a la que contestar
 Retorno: Bytes con el contenido de la trama de petición ARP
 '''
+def createARPReply(IP,MAC):
+
     global myMAC,myIP
-    frame = bytes()
-    logging.debug('Función no implementada')
-    #TODO implementar aqui
+
+    # falta la parte de la cabecera comun (type of hardware etc)
+    framechar = str(myMAC) + str(myIP) + str(MAC) + str(IP)
+    frame = bytes(framechar)
+
     return frame
 
 
-def process_arp_frame(us,header,data,srcMac):
 '''
 Nombre: process_arp_frame
 Descripción: Esta función procesa las tramas ARP.
@@ -225,9 +230,21 @@ Argumentos:
     -srcMac: MAC origen de la trama Ethernet que se ha recibido
 Retorno: Ninguno
 '''
-    logging.debug('Función no implementada')
-    #TODO implementar aquí
+def process_arp_frame(us,header,data,srcMac):
 
+    comun = data[:6]
+    # comprobar que sea correcta
+
+    opcode = data[6:12]
+
+    # si es una request
+    if (opcode == 1):
+        processARPRequest(data[6:], srcMac)
+    # si es una reply
+    elif (opcode == 1):
+        processARPReply(data[6:], srcMac)
+    else:
+        return
 
 
 
