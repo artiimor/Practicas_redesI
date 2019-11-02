@@ -37,8 +37,6 @@ cacheLock = Lock()
 cache = ExpiringDict(max_len=100, max_age_seconds=10)
 
 
-
-
 '''
 Nombre: getIP
 Descripción: Esta función obtiene la dirección IP asociada a una interfaz. Esta funció NO debe ser modificada
@@ -259,11 +257,22 @@ Descripción: Esta función construirá inicializará el nivel ARP. Esta funció
 def initARP(interface):
 
     global myIP,myMAC,arpInitialized
-    logging.debug('Función no implementada')
-    #TODO implementar aquí
+    
+    # Registramos el callback de process_arp_frame con el Ethertypo 0806
+    registerCallback(process_arp_frame, 0806)
+
+    # Obtenemos la mac y la ip asociadas con la interfaz y las almacenamos en la variable global
+    myIP = getIP(interface)
+    myMAC = getHwAddr(interface)
+
+    # Resolucion ARP gratuita (con nuestra propia IP). Si no se recibe None es que algo ha ido mal
+    if ARPResolution(myIP) in not None:
+    	logging.debug('ERROR. El ARP ya estaba inicializado')
+    	return -1
+
+    # El nivel ARP esta inicializado
+    arpInitialized = True
     return 0
-
-
 
 '''
 Nombre: ARPResolution
@@ -286,6 +295,30 @@ Como estas variables globales se leen y escriben concurrentemente deben ser prot
 def ARPResolution(ip):
 
     global requestedIP,awaitingResponse,resolvedMAC
-    logging.debug('Función no implementada')
-    #TODO implementar aquí
+    
+
+    # Si esta en la cache, se devuelve la MAC y listo.
+    # Protegemos con semaforo
+    with cacheLock:
+    	if ip in cache:
+    		return cache[ip]
+
+    # En el caso de que no este en la cache enviamos un ARPRequest hasta 3 veces esperando conseguir una respuesta
+    # Primero construimos el ARPRequest
+    createARPRequest(ip)
+
+    # Le damos valor a las variables globales
+    awaitingResponse = True
+    requestedIP = ip
+
+
+    for i in range(3):
+    	# Si se sigue esperando respuesta reenviamos el Request
+    	if awaitingResponse is True:
+    		createARPRequest(ip):
+
+    	# Si se ha recibido respuesta y es la MAC de la IP por la que preguntabamos
+    	elsif requestedIP is ip:
+    		return resolvedMAC
+
     return None

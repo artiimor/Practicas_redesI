@@ -41,7 +41,6 @@ def getHwAddr(interface):
     s.close()
     return mac
 
-
 '''
 Nombre: process_Ethernet_frame
 Descripción: Esta función se ejecutará cada vez que llegue una trama Ethernet.
@@ -77,8 +76,6 @@ def process_Ethernet_frame(us,header,data):
     # Comprobamos si el destino somos nosotros o el broadcastAddr
     if ethernet_destino is not macAddress and ethernet_destino is not broadcastAddr:
         return
-
-
 
     if not ethertype in upperProtos:
         return
@@ -124,10 +121,6 @@ class rxThread(threading.Thread):
         # Para la ejecución de pcap_loop
         if handle is not None:
             pcap_breakloop(handle)
-
-
-
-
 
 
 '''
@@ -254,5 +247,33 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     global macAddress,handle
 
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+
+    # La trama ethernet que construyo esta constituida por la siguiente secuencia de bytes:
+    # 6 bytes de la direccion MAC de origen
+    # 6 bytes de la direccion MAC de destino
+    # 2 bytes de la cabecera ethertype
+    # el resto de bytes es el payload
+
+    # Primero comprobar que la cabecera no va a ser de longitud mayor que la permitida
+    len = len + 14 # 6 + 6 + 2 = 14
+
+    if len > ETH_FRAME_MAX:
+    	logging.debug('Se ha intentado crear una cabecera ethernet con longitud mayor de lo permitido·')
+    	return -1
+
+    # Si la trama ethernet no se pasa de tamaño la construyo
+    ethernetFrame = macAddress + dstMac + etherType + data
+    
+    # Si la trama es demasiado corta la relleno con ceros
+    if len < ETH_FRAME_MIN:
+    	for (int i = len; i<ETH_FRAME_MIN; i++):
+    		ethernetFrame[i] = 0
+    	len = ETH_FRAME_MIN
+
+    # Por ultimo, llamo a pcap inject
+    
+    # TODO supongo que s es el buf, si no no se que poner
+    pcap_inject(handle,s ,len)
+
 
     return 0
