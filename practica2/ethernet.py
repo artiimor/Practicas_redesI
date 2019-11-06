@@ -74,7 +74,10 @@ def process_Ethernet_frame(us,header,data):
     ethertype = data [12:14]
 
     # Comprobamos si el destino somos nosotros o el broadcastAddr
-    if ethernet_destino is not macAddress and ethernet_destino is not broadcastAddr:
+    
+    if ethernet_destino is not macAddress and ethernet_destino != broadcastAddr:
+        print(ethernet_destino)
+        print(bytearray(broadcastAddr))
         print('PUTA VIDA')
         return
 
