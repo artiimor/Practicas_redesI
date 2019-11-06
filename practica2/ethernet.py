@@ -75,6 +75,7 @@ def process_Ethernet_frame(us,header,data):
 
     # Comprobamos si el destino somos nosotros o el broadcastAddr
     if ethernet_destino is not macAddress and ethernet_destino is not broadcastAddr:
+        print('PUTA VIDA')
         return
 
     if not ethertype in upperProtos:
@@ -266,16 +267,14 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     
     # Si la trama es demasiado corta la relleno con ceros
     if len < ETH_FRAME_MIN:
-    	i = len
-    	while i<ETH_FRAME_MIN:
-    		ethernetFrame[i] = 0
-    		i = i+1
+    	ethernetFrame = bytearray(ethernetFrame)
+    	ethernetFrame.extend(bytes([0]*(ETH_FRAME_MIN-len)))
     	len = ETH_FRAME_MIN
+    	
 
     # Por ultimo, llamo a pcap inject
-
     # TODO supongo que s es el buf, si no no se que poner
-    pcap_inject(handle,s ,len)
+    pcap_inject(handle, bytes(ethernetFrame), len)
 
 
     return 0

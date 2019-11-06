@@ -240,7 +240,7 @@ def process_arp_frame(us,header,data,srcMac):
     if (opcode == 1):
         processARPRequest(data[6:], srcMac)
     # si es una reply
-    elif (opcode == 1):
+    elif (opcode == 2):
         processARPReply(data[6:], srcMac)
     else:
         return
@@ -269,11 +269,11 @@ def initARP(interface):
     # Resolucion ARP gratuita (con nuestra propia IP). Si no se recibe None es que algo ha ido mal
     if ARPResolution(myIP) is not None:
     	logging.debug('ERROR. El ARP ya estaba inicializado')
-    	return -1
+    	return False
 
     # El nivel ARP esta inicializado
     arpInitialized = True
-    return 0
+    return True
 
 '''
 Nombre: ARPResolution
@@ -306,7 +306,8 @@ def ARPResolution(ip):
 
     # En el caso de que no este en la cache enviamos un ARPRequest hasta 3 veces esperando conseguir una respuesta
     # Primero construimos el ARPRequest
-    createARPRequest(ip)
+    data = createARPRequest(ip)
+    sendEthernetFrame(data, 0x14, bytes(0x0806), broadcastAddr)
 
     # Le damos valor a las variables globales
     awaitingResponse = True
@@ -316,7 +317,8 @@ def ARPResolution(ip):
     for i in range(3):
     	# Si se sigue esperando respuesta reenviamos el Request
     	if awaitingResponse is True:
-    		createARPRequest(ip)
+    		data = createARPRequest(ip)
+    		sendEthernetFrame(data, 0x14, bytes(0x0806), broadcastAddr)
 
     	# Si se ha recibido respuesta y es la MAC de la IP por la que preguntabamos
     	elif requestedIP is ip:
