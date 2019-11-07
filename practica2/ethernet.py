@@ -65,10 +65,10 @@ def process_Ethernet_frame(us,header,data):
 	global macAddress
 	data = bytes(data)
     # Ethernet origen los 6 primeros bytes
-	ethernet_origen = data[:6]
+	ethernet_origen = data[6:12]
 	# print('PUTA VIDA')
 	# Ethernet destino del 6 al 12
-	ethernet_destino = data[6:12]
+	ethernet_destino = data[:6]
 
     # Ethertype los dos siguientes bytes
 	ethertype = data [12:14]
@@ -76,15 +76,18 @@ def process_Ethernet_frame(us,header,data):
     # Comprobamos si el destino somos nosotros o el broadcastAddr
     
 	if ethernet_destino != macAddress and ethernet_destino != broadcastAddr:
+
 		return
-    # print("El ethertype es: "+str(ethertype))
-    # print(ethernet_origen)
-	if not str(bytes(ethertype)) in upperProtos:
+
+	ethertypeBien = struct.unpack('h',ethertype)
+
+	if not ethertypeBien in upperProtos:
 		# print("No se ha encontrado el ethertype: "+str(ethertype)+"en el diccionario")
 		# print(upperProtos)
+		
 		return
     
-	func = upperProtos[str(bytes(ethertype))]
+	func = upperProtos[ethertypeBien]
 	
 	func (us, header, data[14:], ethernet_origen)
 
@@ -152,7 +155,7 @@ def registerCallback(callback_func, ethertype):
 
     global upperProtos
     #upperProtos es el diccionario que relaciona funcion de callback y ethertype
-    upperProtos[ethertype] = callback_func
+    upperProtos[struct.unpack('h',ethertype)] = callback_func
 
 
 '''
@@ -224,6 +227,7 @@ def stopEthernetLevel():
     # cerramos el descriptor
     if handle is not None:
         pcap_close(handle)
+        recvThread.stop()
 
     # Ahora el nivel no esta inicializado
     levelInitialized = False
@@ -268,9 +272,9 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     	return -1
 
     # Si la trama ethernet no se pasa de tamanno la construyo
-    ethernetFrame = macAddress + dstMac + etherType + data
+    ethernetFrame = dstMac + macAddress + etherType + data
     
-    len = len + 2 + 6 +6
+    len = len + 2 + 6 + 6
 
     # print("manAddress: "+str(macAddress))
     # print("dstMAC: "+str(dstMac))
@@ -286,7 +290,7 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     	# print("\n\nFRAME de puta madre: \n")
     	# print(ethernetFrame)
     	
-
+    print("ENVIO EL FRAME")
     # Por ultimo, llamo a pcap inject
     pcap_inject(handle, ethernetFrame, len)
 
