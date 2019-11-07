@@ -62,30 +62,37 @@ Retorno:
     -Ninguno
 '''
 def process_Ethernet_frame(us,header,data):
-    global macAddress
-
+	global macAddress
+	print("\n\n\n")
+	data = bytes(data)
+	print(data)
+	print("\n\n\n")
     # Ethernet origen los 6 primeros bytes
-    ethernet_origen = data[:6]
-
+	ethernet_origen = data[:6]
+    # print('PUTA VIDA')
     # Ethernet destino del 6 al 12
-    ethernet_destino = data[6:12]
+	ethernet_destino = data[6:12]
 
     # Ethertype los dos siguientes Bytes
-    ethertype = data [12:14]
+	ethertype = data [12:14]
 
     # Comprobamos si el destino somos nosotros o el broadcastAddr
     
-    if ethernet_destino is not macAddress and ethernet_destino != broadcastAddr:
-        print(ethernet_destino)
-        print(bytearray(broadcastAddr))
-        print('PUTA VIDA')
-        return
-
-    if not ethertype in upperProtos:
-        return
-
-    func = upperProtos[ethertype]
-    func (us, header, data[14:], ethernet_origen)
+	if ethernet_destino is not macAddress and ethernet_destino != broadcastAddr:
+        # print(ethernet_destino)
+        # print(broadcastAddr)
+        # print('PUTA VIDA')
+		return
+    # print("El ethertype es: "+str(ethertype))
+    # print(ethernet_origen)
+	if not str(bytes(ethertype)) in upperProtos:
+		# print("No se ha encontrado el ethertype: "+str(ethertype)+"en el diccionario")
+		# print(upperProtos)
+		return
+    
+	func = upperProtos[str(bytes(ethertype))]
+	
+	func (us, header, data[14:], ethernet_origen)
 
 
 '''
@@ -259,7 +266,8 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     # el resto de bytes es el payload
 
     # Primero comprobar que la cabecera no va a ser de longitud mayor que la permitida
-    len = len + 14 # 6 + 6 + 2 = 14
+
+
 
     if len > ETH_FRAME_MAX:
     	logging.debug('Se ha intentado crear una cabecera ethernet con longitud mayor de lo permitido.')
@@ -268,16 +276,26 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     # Si la trama ethernet no se pasa de tamanno la construyo
     ethernetFrame = macAddress + dstMac + etherType + data
     
+    print(len)
+    len = len + 2 + 6 +6
+
+    # print("manAddress: "+str(macAddress))
+    # print("dstMAC: "+str(dstMac))
+    # print("ethertype: "+str(etherType))
+    # print("data: "+str(data))
+    # print("ethernet frame: "+str(ethernetFrame))
     # Si la trama es demasiado corta la relleno con ceros
+    
     if len < ETH_FRAME_MIN:
-    	ethernetFrame = bytearray(ethernetFrame)
-    	ethernetFrame.extend(bytes([0]*(ETH_FRAME_MIN-len)))
-    	len = ETH_FRAME_MIN
+    	
+    	ethernetFrame = ethernetFrame + bytes([0]*(ETH_FRAME_MIN-len))
+    	# print("\n\nFRAME de puta madre: \n")
+    	# print(ethernetFrame)
+    	# len = ETH_FRAME_MIN
     	
 
     # Por ultimo, llamo a pcap inject
-    # TODO supongo que s es el buf, si no no se que poner
-    pcap_inject(handle, bytes(ethernetFrame), len)
+    pcap_inject(handle, ethernetFrame, len)
 
 
     return 0

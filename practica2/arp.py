@@ -185,9 +185,14 @@ def createARPRequest(ip):
 
     # falta la parte de la cabecera comun (type of hardware etc)
     # no se si hay que enviarla a [0xFF]*6 o a [0x00]*6 porque es una request
-    framechar = str(myMAC) + str(myIP) + str([0xFF]*6) + str(ip)
+    framechar = str(myMAC) + str(myIP) + str(broadcastAddr) + str(ip)
+    # print("framechar: "+framechar)
     # Necesario el encoding
+
     frame = bytes(framechar, encoding='utf8')
+    # print("frame: "+str(frame))
+    frame = ARPHeader + bytes([0x0001]) + frame
+    print(frame)
 
     return frame
 
@@ -206,8 +211,11 @@ def createARPReply(IP,MAC):
 
     # falta la parte de la cabecera comun (type of hardware etc)
     framechar = str(myMAC) + str(myIP) + str(MAC) + str(IP)
-    frame = bytes(framechar)
+    
+    frame = bytes(framechar, encoding='utf8')
 
+    frame = ARPHeader + frame
+    
     return frame
 
 
@@ -230,20 +238,25 @@ Argumentos:
 Retorno: Ninguno
 '''
 def process_arp_frame(us,header,data,srcMac):
-
-    comun = data[:6]
+	print("procesando")
+	comun = data[:6]
     # comprobar que sea correcta
+	if comun != ARPHeader:
+		print ("La cabecera comun no es correcta")
+	opcode = data[6:7]
 
-    opcode = data[6:12]
-
+	print(opcode)
+	print(bytes([0x0001]))
+	print(data)
     # si es una request
-    if (opcode == 1):
-        processARPRequest(data[6:], srcMac)
+	if (opcode == bytes([0x0001])):
+		print("ES un OPCODE ")
+		processARPRequest(data[6:], srcMac)
     # si es una reply
-    elif (opcode == 2):
-        processARPReply(data[6:], srcMac)
-    else:
-        return
+	elif (opcode == 2):
+		processARPReply(data[6:], srcMac)
+	else:
+		return
 
 
 
@@ -260,7 +273,7 @@ def initARP(interface):
     global myIP,myMAC,arpInitialized
     
     # Registramos el callback de process_arp_frame con el Ethertypo 0806
-    registerCallback(process_arp_frame, 0x0806)
+    registerCallback(process_arp_frame, str(bytes([0x08,0x06])))
 
     # Obtenemos la mac y la ip asociadas con la interfaz y las almacenamos en la variable global
     myIP = getIP(interface)
@@ -307,8 +320,8 @@ def ARPResolution(ip):
     # En el caso de que no este en la cache enviamos un ARPRequest hasta 3 veces esperando conseguir una respuesta
     # Primero construimos el ARPRequest
     data = createARPRequest(ip)
-    sendEthernetFrame(data, 0x14, bytes(0x0806), broadcastAddr)
-
+    sendEthernetFrame(data, 20, bytes([0x08,0x06]), broadcastAddr)
+    
     # Le damos valor a las variables globales
     awaitingResponse = True
     requestedIP = ip
@@ -318,7 +331,10 @@ def ARPResolution(ip):
     	# Si se sigue esperando respuesta reenviamos el Request
     	if awaitingResponse is True:
     		data = createARPRequest(ip)
-    		sendEthernetFrame(data, 0x14, bytes(0x0806), broadcastAddr)
+    		# print("bytearray: "+str(bytes([0x08,0x06])))
+    		sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
+    		# print("La requestedIP es: "+str(requestedIP))
+    		# print("lo que he enciado es:"+str(data))
 
     	# Si se ha recibido respuesta y es la MAC de la IP por la que preguntabamos
     	elif requestedIP is ip:
