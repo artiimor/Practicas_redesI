@@ -191,12 +191,12 @@ def createARPRequest(ip):
 
     # falta la parte de la cabecera comun (type of hardware etc)
     # no se si hay que enviarla a [0xFF]*6 o a [0x00]*6 porque es una request
-    framechar = str(myMAC) + str(myIP) + str(broadcastAddr) + str(ip)
-    print(bytes(myIP))
+    frame = myMAC + bytes(str(myIP), encoding='utf8') + broadcastAddr + bytes(str(ip), encoding='utf8')
+    
     # print("framechar: "+framechar)
     # Necesario el encoding
 
-    frame = bytes(framechar, encoding='utf8')
+    # frame = bytes(framechar, encoding='utf8')
     # print("frame: "+str(frame))
     frame = ARPHeader + bytes([0x00,0x01]) + frame
     print("\n\n\n")
