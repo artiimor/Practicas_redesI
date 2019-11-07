@@ -63,7 +63,7 @@ Retorno:
 '''
 def process_Ethernet_frame(us,header,data):
 	global macAddress
-
+	print("PROCESO BRO")
 	data = bytes(data)
     # Ethernet origen los 6 primeros bytes
 	ethernet_origen = data[:6]
@@ -275,7 +275,6 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     # Si la trama ethernet no se pasa de tamanno la construyo
     ethernetFrame = macAddress + dstMac + etherType + data
     
-    print(len)
     len = len + 2 + 6 +6
 
     # print("manAddress: "+str(macAddress))
@@ -288,13 +287,12 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     if len < ETH_FRAME_MIN:
     	
     	ethernetFrame = ethernetFrame + bytes([0]*(ETH_FRAME_MIN-len))
+    	len = ETH_FRAME_MIN
     	# print("\n\nFRAME de puta madre: \n")
     	# print(ethernetFrame)
-    	# len = ETH_FRAME_MIN
     	
 
     # Por ultimo, llamo a pcap inject
     pcap_inject(handle, ethernetFrame, len)
-
 
     return 0

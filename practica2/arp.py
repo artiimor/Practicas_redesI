@@ -94,10 +94,13 @@ def processARPRequest(data, MAC):
     global myIP
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     
-    mac_origen = data[6:20]
+    mac_origen = data[2:8]
     print(data)
-    print(mac_origen)
-    print(MAC)
+    # print("\n\nMAC ORIGEN:")
+    # print(MAC)
+    print("ME CAGO EN MIS MUERTOS")
+    # print("YO PILLO: ")
+    # print(mac_origen)
     if mac_origen != MAC:
         return
 
@@ -105,14 +108,18 @@ def processARPRequest(data, MAC):
     ip_origen = data[6:10]
 
     # del byte 16 al 20 (20 no incluido) esta la ip destino
-    ip_destino = data[16:20]
+    ip_destino = data[23:32]
 
-    print(ip_destino)
+    print("\n\n\nMI IP: ")
     print(myIP)
+    
+    print("YO PILLO: ")
+    print(int(ip_destino))
     # Comprobamos con la variable local
-    if ip_destino != myIP:
+    if int(ip_destino) != myIP:
+        print("NO SOY YO BRO")
         return
-
+    print("SI SOY YO BRO")
     # TODO revisar que esta bien
     createARPReply(ip_origen, mac_origen)
     sendEthernetFrame(data, len, data, mac_origen)
@@ -144,7 +151,6 @@ Retorno: Ninguno
 def processARPReply(data,MAC):
 
     global requestedIP,resolvedMAC,awaitingResponse,cache, myIP
-
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     mac_origen = data[:6]
     if mac_origen != MAC:
@@ -199,10 +205,6 @@ def createARPRequest(ip):
     # frame = bytes(framechar, encoding='utf8')
     # print("frame: "+str(frame))
     frame = ARPHeader + bytes([0x00,0x01]) + frame
-    print("\n\n\n")
-    print("MIRA AQUI")
-    print(frame)
-    print("\n\n\n")
 
     return frame
 
@@ -253,13 +255,13 @@ def process_arp_frame(us,header,data,srcMac):
     # comprobar que sea correcta
 	if comun != ARPHeader:
 		print ("La cabecera comun no es correcta")
-	opcode = data[6:7]
+	opcode = data[6:8]
 
 	print(opcode)
-	print(bytes([0x0001]))
+	print(bytes([0x00,0x01]))
 	print(data)
     # si es una request
-	if (opcode == bytes([0x0001])):
+	if (opcode == bytes([0x00,0x01])):
 		print("ES un OPCODE ")
 		processARPRequest(data[6:], srcMac)
     # si es una reply
@@ -351,4 +353,6 @@ def ARPResolution(ip):
     	elif requestedIP is ip:
     		return resolvedMAC
 
+    requestedIP = None
+    awaitingResponse = False
     return None
