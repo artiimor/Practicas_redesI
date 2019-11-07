@@ -63,24 +63,19 @@ Retorno:
 '''
 def process_Ethernet_frame(us,header,data):
 	global macAddress
-	print("PROCESO BRO")
 	data = bytes(data)
     # Ethernet origen los 6 primeros bytes
 	ethernet_origen = data[:6]
-    # print('PUTA VIDA')
-    # Ethernet destino del 6 al 12
+	# print('PUTA VIDA')
+	# Ethernet destino del 6 al 12
 	ethernet_destino = data[6:12]
 
-    # Ethertype los dos siguientes Bytes
+    # Ethertype los dos siguientes bytes
 	ethertype = data [12:14]
 
     # Comprobamos si el destino somos nosotros o el broadcastAddr
     
-	if ethernet_destino is not macAddress and ethernet_destino != broadcastAddr:
-        # print(ethernet_destino)
-        # print(broadcastAddr)
-        # print('PUTA VIDA')
-		print("Ni soy yo ni es el broadcast")
+	if ethernet_destino != macAddress and ethernet_destino != broadcastAddr:
 		return
     # print("El ethertype es: "+str(ethertype))
     # print(ethernet_origen)

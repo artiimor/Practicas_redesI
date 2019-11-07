@@ -95,34 +95,28 @@ def processARPRequest(data, MAC):
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     
     mac_origen = data[2:8]
-    print(data)
+    
     # print("\n\nMAC ORIGEN:")
     # print(MAC)
-    print("ME CAGO EN MIS MUERTOS")
     # print("YO PILLO: ")
     # print(mac_origen)
     if mac_origen != MAC:
         return
 
     # del byte 6 al 10 (10 no incluido) esta la ip origen
-    ip_origen = data[6:10]
+    ip_origen = data[8:17]
 
     # del byte 16 al 20 (20 no incluido) esta la ip destino
     ip_destino = data[23:32]
 
-    print("\n\n\nMI IP: ")
-    print(myIP)
-    
-    print("YO PILLO: ")
-    print(int(ip_destino))
     # Comprobamos con la variable local
     if int(ip_destino) != myIP:
         print("NO SOY YO BRO")
         return
-    print("SI SOY YO BRO")
     # TODO revisar que esta bien
-    createARPReply(ip_origen, mac_origen)
-    sendEthernetFrame(data, len, data, mac_origen)
+    frame = createARPReply(ip_origen, mac_origen)
+    print("ENVIAMOS LA RESPUESTA")
+    sendEthernetFrame(frame, len(frame), bytes([0x08,0x06]), mac_origen)
     return
 
 
@@ -152,23 +146,32 @@ def processARPReply(data,MAC):
 
     global requestedIP,resolvedMAC,awaitingResponse,cache, myIP
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
-    mac_origen = data[:6]
+    print(awaitingResponse)
+    if awaitingResponse is False:
+        return
+    print("PROCESANDO REPLY :)")
+    mac_origen = data[2:8]
     if mac_origen != MAC:
         return
 
     # del byte 6 al 10 (10 no incluido) esta la ip origen, la de origen en una arp reply es la que queriamos resolver
-    ip_origen = data[6:10]
+    
 
     # extraemos la mac destino del bytearray (6 bytes sin contar el 26), la que envio la arp request
     mac_destino = data[20:26]
 
     # del byte 16 al 20 (20 no incluido) esta la ip destino
-    ip_destino = data[16:20]
+    ip_destino = data[25:34]
 
-    if ip_destino != myIP:
+    ip_origen = data[8:17]
+
+    if int(ip_destino) != myIP:
+        print("ERROR1")
         return
 
-    if ip_origen != requestedIP:
+    if int(ip_origen) != requestedIP:
+        print(requestedIP)
+        print("ERROR2")
         return
 
     # Protegemos con lock usando el bloque with
@@ -176,11 +179,10 @@ def processARPReply(data,MAC):
         resolvedMAC = mac_origen
 
     with cacheLock:
-        cache = {ip_origen: mac_origen}
+        cache = {int(ip_origen): mac_origen}
     # aniadimos el par ip/mac , son las de origen porque el arp reply tiene como origen las de destino del arp request
-
-    awaitingResponse = False
-    requestedIP = None
+    with globalLock:
+        awaitingResponse = False
 
     return
 
@@ -222,11 +224,10 @@ def createARPReply(IP,MAC):
     global myMAC,myIP
 
     # falta la parte de la cabecera comun (type of hardware etc)
-    framechar = str(myMAC) + str(myIP) + str(MAC) + str(IP)
+    frame = myMAC + bytes(str(myIP), encoding='utf8') + MAC + bytes(str(IP), encoding='utf8')
     
-    frame = bytes(framechar, encoding='utf8')
 
-    frame = ARPHeader + frame
+    frame = ARPHeader + bytes([0x00,0x02]) + frame
     
     return frame
 
@@ -250,22 +251,17 @@ Argumentos:
 Retorno: Ninguno
 '''
 def process_arp_frame(us,header,data,srcMac):
-	print("procesando")
 	comun = data[:6]
     # comprobar que sea correcta
 	if comun != ARPHeader:
 		print ("La cabecera comun no es correcta")
 	opcode = data[6:8]
 
-	print(opcode)
-	print(bytes([0x00,0x01]))
-	print(data)
     # si es una request
 	if (opcode == bytes([0x00,0x01])):
-		print("ES un OPCODE ")
 		processARPRequest(data[6:], srcMac)
     # si es una reply
-	elif (opcode == 2):
+	elif (opcode == bytes([0x00,0x02])):
 		processARPReply(data[6:], srcMac)
 	else:
 		return
@@ -292,7 +288,10 @@ def initARP(interface):
     myMAC = getHwAddr(interface)
 
     # Resolucion ARP gratuita (con nuestra propia IP). Si no se recibe None es que algo ha ido mal
-    if ARPResolution(myIP) is not None:
+    prueba = ARPResolution(myIP)
+    print("\nprueba::::::")
+    print(prueba)
+    if prueba is not None:
     	logging.debug('ERROR. El ARP ya estaba inicializado')
     	return False
 
@@ -332,27 +331,29 @@ def ARPResolution(ip):
     # En el caso de que no este en la cache enviamos un ARPRequest hasta 3 veces esperando conseguir una respuesta
     # Primero construimos el ARPRequest
     data = createARPRequest(ip)
-    sendEthernetFrame(data, 20, bytes([0x08,0x06]), broadcastAddr)
+    sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
     
     # Le damos valor a las variables globales
-    awaitingResponse = True
-    requestedIP = ip
-
+    with globalLock:
+        awaitingResponse = True
+        requestedIP = ip
 
     for i in range(3):
     	# Si se sigue esperando respuesta reenviamos el Request
-    	if awaitingResponse is True:
-    		data = createARPRequest(ip)
+        if awaitingResponse is True:
     		# print("bytearray: "+str(bytes([0x08,0x06])))
 
-    		sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
+            sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
     		# print("La requestedIP es: "+str(requestedIP))
     		# print("lo que he enciado es:"+str(data))
 
     	# Si se ha recibido respuesta y es la MAC de la IP por la que preguntabamos
-    	elif requestedIP is ip:
-    		return resolvedMAC
+        elif requestedIP is ip:
+            print("resolvido")
+            return resolvedMAC
+        else:
+            print("COSA RARA")
 
-    requestedIP = None
     awaitingResponse = False
+    
     return None
