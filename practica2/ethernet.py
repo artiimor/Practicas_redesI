@@ -63,10 +63,8 @@ Retorno:
 '''
 def process_Ethernet_frame(us,header,data):
 	global macAddress
-	print("\n\n\n")
+
 	data = bytes(data)
-	print(data)
-	print("\n\n\n")
     # Ethernet origen los 6 primeros bytes
 	ethernet_origen = data[:6]
     # print('PUTA VIDA')
@@ -82,6 +80,7 @@ def process_Ethernet_frame(us,header,data):
         # print(ethernet_destino)
         # print(broadcastAddr)
         # print('PUTA VIDA')
+		print("Ni soy yo ni es el broadcast")
 		return
     # print("El ethertype es: "+str(ethertype))
     # print(ethernet_origen)

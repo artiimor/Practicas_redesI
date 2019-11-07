@@ -93,7 +93,11 @@ def processARPRequest(data, MAC):
 
     global myIP
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
-    mac_origen = data[:6]
+    
+    mac_origen = data[6:20]
+    print(data)
+    print(mac_origen)
+    print(MAC)
     if mac_origen != MAC:
         return
 
@@ -103,6 +107,8 @@ def processARPRequest(data, MAC):
     # del byte 16 al 20 (20 no incluido) esta la ip destino
     ip_destino = data[16:20]
 
+    print(ip_destino)
+    print(myIP)
     # Comprobamos con la variable local
     if ip_destino != myIP:
         return
@@ -186,13 +192,17 @@ def createARPRequest(ip):
     # falta la parte de la cabecera comun (type of hardware etc)
     # no se si hay que enviarla a [0xFF]*6 o a [0x00]*6 porque es una request
     framechar = str(myMAC) + str(myIP) + str(broadcastAddr) + str(ip)
+    print(bytes(myIP))
     # print("framechar: "+framechar)
     # Necesario el encoding
 
     frame = bytes(framechar, encoding='utf8')
     # print("frame: "+str(frame))
-    frame = ARPHeader + bytes([0x0001]) + frame
+    frame = ARPHeader + bytes([0x00,0x01]) + frame
+    print("\n\n\n")
+    print("MIRA AQUI")
     print(frame)
+    print("\n\n\n")
 
     return frame
 
@@ -332,6 +342,7 @@ def ARPResolution(ip):
     	if awaitingResponse is True:
     		data = createARPRequest(ip)
     		# print("bytearray: "+str(bytes([0x08,0x06])))
+
     		sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
     		# print("La requestedIP es: "+str(requestedIP))
     		# print("lo que he enciado es:"+str(data))
