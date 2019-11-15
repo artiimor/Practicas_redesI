@@ -90,7 +90,6 @@ def getDefaultGW(interface):
 
 
 
-def process_IP_datagram(us,header,data,srcMac):
     '''
         Nombre: process_IP_datagram
         Descripción: Esta función procesa datagramas IP recibidos.
@@ -111,7 +110,7 @@ def process_IP_datagram(us,header,data,srcMac):
                 clave el valor del campo protocolo del datagrama IP.
                     -En caso de que haya una función de nivel superior registrada, debe llamarse a dicha funciñón 
                     pasando los datos (payload) contenidos en el datagrama IP.
-        
+
         Argumentos:
             -us: Datos de usuario pasados desde la llamada de pcap_loop. En nuestro caso será None
             -header: cabecera pcap_pktheader
@@ -119,10 +118,27 @@ def process_IP_datagram(us,header,data,srcMac):
             -srcMac: MAC origen de la trama Ethernet que se ha recibido
         Retorno: Ninguno
     '''
+def process_IP_datagram(us,header,data,srcMac):
 
+    data = bytes(data)
 
+    version = data[0:4]
+    ihl = data[4:8]
+    ToService = data[8:16]
+    totalLength = data[16:32]
+    identification = data[32:48]
+    flags = data[48:51]
+    offset = data[51:64]
+    TtoLive = data[64:80]
+    protocol = data[80:88]
+    HChecksum = data[88:104]
+    iporigen = data[104:136]
+    ipdestino = data[136:168]
+    # faltan extraer las opciones y el padding
 
-
+    # si el checksum no es 0 retornamos
+    if chksum(version) != 0:
+        return
 
 def registerIPProtocol(callback,protocol):
     '''
