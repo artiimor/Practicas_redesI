@@ -122,26 +122,86 @@ def process_IP_datagram(us,header,data,srcMac):
 
     data = bytes(data)
 
-    version = data[0:4]
-    ihl = data[4:8]
-    ToService = data[8:16]
-    totalLength = data[16:32]
-    identification = data[32:48]
-    flags = data[48:51]
-    offset = data[51:64]
-    TtoLive = data[64:80]
-    protocol = data[80:88]
-    HChecksum = data[88:104]
-    iporigen = data[104:136]
-    ipdestino = data[136:168]
-    # faltan extraer las opciones y el padding
+    # version => 4 primeros bits => XXXX----
+    version = data[0] >> 0x04 # Lo desplazo 4 bytes
 
+    # ihl => 4 ultimos bytes => ----XXXX
+    ihl = data[0] & 0x0F # aplico mascara 0000 1111 (0x0f)
+
+    # TOService es el segundo byte
+    ToService = data[1]
+
+    # Total lenght son el tercer y cuarto byte
+    totalLength = data[2:4]
+
+    # Identification son el quinto y sexto byte
+    identification = data[4:6]
+
+    # Los 3 primeros bits del septimo byte. Realizamos desplazamiento despues de aplicar la mascara correspondiente
+    # Nos interesan el bit 2 y 3 porque el primero esta reservado y es igual a 0
+    DF = data[6] & 0x40 # -X-- ---- de data[7]
+    DF = DF >> 6 # desplazo 6 a la izquierda => ---- ---X>
+    MF = data[6] & 0x20 # --X- ---- de data[7]
+    MF = MF >> 5 # desplazo 5 a la izquierda => ---- ---X>
+
+    # Offset es el resto del septimo byte y el octavo => ---X XXXX 
+    offset = data[6:8] & 0x1f # Aplico la mascara 0001 1111 (0x1F)
+
+    # time to live es el noveno byte
+    TtoLive = data[8]
+
+    # protocol es el decimo byte
+    protocol = data[9]
+
+    # Header Checksum son los bytes 11 y 12
+    HChecksum = data[10:12]
+
+    # Las direcciones ip origen y destino ocupan 4 bytes y vienen a continuacion
+    iporigen = data[12:16]
+    ipdestino = data[16:20]
+
+    # Faltan por extraer las opciones y el padding que vienen a continuacion
+
+
+    checksum = chksum(version)
     # si el checksum no es 0 retornamos
-    if chksum(version) != 0:
+    if checksum != 0:
         return
 
-def registerIPProtocol(callback,protocol):
-    '''
+    # Si el offset no es 0 retornamos
+    if offset != 0:
+    	return
+
+    # Realizacion del logueado de los campos pedidos
+    logging.debug("Cabecera IP: "+str(totalLength))
+    logging.debug("IPID: "+str(identification))
+    logging.debug("DF flag: "+str(DF))
+    logging.debug("MF flaf: "+str(MF))
+    logging.debug("offset: "+str(offset))
+    logging.debug("IP Origen: "+str(iporigen))
+    logging.debug("IP Destino: "+str(ipdestino))
+    if protocol  == 1:
+    	logging.debug("Protocolo: ICMP"
+    if protocol == 6:
+    	logging.debug("Protocolo: IP")
+    if protocol == 17:
+    	logging.debug("Protocolo: UDP"
+
+    protocoloBien = struct.unpack('h',protocolo)
+
+    if not protocoloBien in protocols:
+    	logging.debug("No se ha encontrado un protocolo en el diccionario")
+		return
+
+	func = protocols[protocoloBien]
+
+	# Llamamos a la funcion pasandole el payload
+	longitudCabecera = totalLength - (ihl*4)
+	payload = data[longitudCabecera:]
+	func(us, header, data[14:], iporigen)
+
+
+'''
         Nombre: registerIPProtocol
         Descripción: Esta función recibirá el nombre de una función y su valor de protocolo IP asociado y añadirá en la tabla 
             (diccionario) de protocolos de nivel superior dicha asociación. 
@@ -161,10 +221,11 @@ def registerIPProtocol(callback,protocol):
             -protocol: valor del campo protocolo de IP para el cuál se quiere registrar una función de callback.
         Retorno: Ninguno 
     '''
+def registerIPProtocol(callback,protocol):
+    
+    protocols[protocol] = callback
 
-def initIP(interface,opts=None):
-    global myIP, MTU, netmask, defaultGW,ipOpts
-    '''
+'''
         Nombre: initIP
         Descripción: Esta función inicializará el nivel IP. Esta función debe realizar, al menos, las siguientes tareas:
             -Llamar a initARP para inicializar el nivel ARP
@@ -180,10 +241,23 @@ def initIP(interface,opts=None):
             -opts: array de bytes con las opciones a nivel IP a incluir en los datagramas o None si no hay opciones a añadir
         Retorno: True o False en función de si se ha inicializado el nivel o no
     '''
+def initIP(interface,opts=None):
+    global myIP, MTU, netmask, defaultGW,ipOpts
 
-def sendIPDatagram(dstIP,data,protocol):
-    global IPID
-    '''
+    # Llamamos a initARP
+    initARP(interface)
+
+    # Almacenamos la informacion en las variables globales
+    myIP = getIP(interface)
+    MTU = getMTU(interface)
+    netmask = getNetmask(interface)
+    defaultGW = getDefaultGW(interface)
+    ipOpts = opts
+
+    # Registramos el nivel Ethernet
+    registerCallback(process_IP_datagram,0x0800)
+    
+'''
         Nombre: sendIPDatagram
         Descripción: Esta función construye un datagrama IP y lo envía. En caso de que los datos a enviar sean muy grandes la función
         debe generar y enviar el número de fragmentos IP que sean necesarios.
@@ -210,7 +284,52 @@ def sendIPDatagram(dstIP,data,protocol):
         Retorno: True o False en función de si se ha enviado el datagrama correctamente o no
           
     '''
+def sendIPDatagram(dstIP,data,protocol):
+    global IPID
+
+    if ipOpts is not None:
+    	ipHeaderLenght = IP_MIN_HLEN + ipOpts.len()
+    else:
+    	ipHeaderLenght = IP_MIN_HLEN
+
+    if ipHeaderLenght > IP_MAX_HLEN:
+    	logging.debug("ERROR, la cabecerea IP es demasiado grande")
+    	return False
+
+    maxPayloadLenght = 1500 - ipHeaderLenght
+
+    numPackages = (data.len() // maxPayloadLenght)# El numero de paquetes es la division entera
+    if data.len() % maxPayloadLenght is not 0:
+    	numPackages += 1 # Si el resto no es 0 tengo que enviar otro paquete con el resto de la informacion
+
+    i = 0
+
     header = bytes()
+    
+    # Creamos y enviamos los paquetes
+    while i < numPackages:
+    	# Construimos la cabecera IP
+
+    	# Si hay ipOpts lo añadimos
+
+    	# Calculamos el checksum y lo añadimos
+
+    	# Añadimos los datos del payload
+
+    	# añadir MF y offset si es necesario
+    	if numPackages > 1:
+
+    	# Calculamos la MAC de destino
+    	# Si esta en mi subred la calculo llamando a ARPRequest con dstIP
+
+    	# Si no ARPRequest con el default gateway
+
+    	# Enviamos el datagrama con sendEthernetFrame
+
+    	i += 1
+
+
+    
 
 
 
