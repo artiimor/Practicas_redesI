@@ -93,7 +93,7 @@ def getDefaultGW(interface):
     '''
         Nombre: process_IP_datagram
         Descripción: Esta función procesa datagramas IP recibidos.
-            Se ejecuta una vez por cada trama Ethernet recibida con Ethertype 0x0800
+            Se ejecuta una vez por cada trama Ethernet recibida con EthertypeipOpts 0x0800
             Esta función debe realizar, al menos, las siguientes tareas:
                 -Extraer los campos de la cabecera IP (includa la longitud de la cabecera)
                 -Calcular el checksum sobre los bytes de la cabecera IP
@@ -309,17 +309,33 @@ def sendIPDatagram(dstIP,data,protocol):
     # Creamos y enviamos los paquetes
     while i < numPackages:
     	# Construimos la cabecera IP
+        ipHeaderLenght = ipHeaderLenght // 4 #TODO Not sure tho
+        header[0] = 0x40 + ipHeaderLenght
 
     	# Si hay ipOpts lo añadimos
+        if ipOpts is not None:
+            indiceopts = 20 + ipOpts.len()
+            header[20:indiceopts]
 
     	# Calculamos el checksum y lo añadimos
+        header[10:12] = chksum(header)
 
     	# Añadimos los datos del payload
 
     	# añadir MF y offset si es necesario
     	if numPackages > 1:
+            # el offset sera multiplo de 1500 (tam max de ip datagram) excepto en el ultimo fragmento
+            dos bytes = 16 bits = 4 nums en hex FFFF
+            0x
+            # Si es el ultimo fragmento los 3 flags son 0
+            if i == (numPackages-1):
+                header[6] = 0x0
+            # 0010 , dos flags a 0 y el 3o a 1
+            else:
+                header[6] = 0x2000 + 0x
 
     	# Calculamos la MAC de destino
+
     	# Si esta en mi subred la calculo llamando a ARPRequest con dstIP
 
     	# Si no ARPRequest con el default gateway
