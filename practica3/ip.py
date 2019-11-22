@@ -286,62 +286,105 @@ def initIP(interface,opts=None):
     '''
 def sendIPDatagram(dstIP,data,protocol):
     global IPID
+    
+    
 
     if ipOpts is not None:
-    	ipHeaderLenght = IP_MIN_HLEN + ipOpts.len()
+    	ipHeaderLenght = IP_MIN_HLEN + len(ipOpts)
     else:
     	ipHeaderLenght = IP_MIN_HLEN
 
     if ipHeaderLenght > IP_MAX_HLEN:
     	logging.debug("ERROR, la cabecerea IP es demasiado grande")
-    	return False
+    	return Falseindiceopts
+     
+    header = bytearray(ipHeaderLenght)
+    
+    #####################################################################################
+    ##########################Construimos la parte 'comun'###############################
+    #####################################################################################
+
+    # Primer byte. version y la longitud total de la cabecera  
+    header[0] = (0x40)+(ipHeaderLenght//4)
+    
+    # Segundo byte. Siempre 0
+    header[1] = 0x00
+    
+    # Tercer y cuarto byte la longitud total del datagrama. Se calculan mas adelante
+    
+    # Quinto y sexto la identificacion
+    header[4:6] = [0x12,0x34]
+    
+    # noveno byte en TTL. Por defecto es 64
+    header[8] = 64 
+    
+    # Decimo byte el protocolo
+    header[9] = protocol
+    
+    # IPs origen y destino
+    # TODO revisar el pack
+    header[12:16] = bytes(struct.pack('!I', myIP))
+    header[16:20] = bytes(struct.pack('!I', dstIP))
+    
+    # Si hay ipOpts lo añadimos
+    if ipOpts is not None:
+        indiceopts = 20 + len(ipOpts)
+        header[20:indiceopts]
+    
+    
+    #####################################################################################
+    ########################Calculamos el numero de paquetes#############################
+    #####################################################################################
+
 
     maxPayloadLenght = 1500 - ipHeaderLenght
+    
+    while (maxPayloadLenght % 8) != 0:
+        maxPayloadLenght -= 1
 
-    numPackages = (data.len() // maxPayloadLenght)# El numero de paquetes es la division entera
-    if data.len() % maxPayloadLenght is not 0:
+    numPackages = (len(data) // maxPayloadLenght) # El numero de paquetes es la division entera
+    if len(data) % maxPayloadLenght is not 0:
     	numPackages += 1 # Si el resto no es 0 tengo que enviar otro paquete con el resto de la informacion
 
     i = 0
-
-    header = bytes()
     
-    # Creamos y enviamos los paquetes
+    
+    #####################################################################################
+    ########################Creamos y enviamos los paquetes##############################
+    #####################################################################################
     while i < numPackages:
-    	# Construimos la cabecera IP
-        ipHeaderLenght = ipHeaderLenght // 4 #TODO Not sure tho
-        header[0] = 0x40 + ipHeaderLenght
-
-    	# Si hay ipOpts lo añadimos
-        if ipOpts is not None:
-            indiceopts = 20 + ipOpts.len()
-            header[20:indiceopts]
+    	# Construimos lo que falta de la cabecera IP
+        # Comprobaciones si es el ultimo paquete
+        if i == (numPackages - 1):
+            # Su longitud será lo que no hemos enviado del data mas la longitud del header
+            header[2:4] = (len(data) - (maxPayloadLenght * (numPackages-1))) + ipHeaderLenght
+        else:
+            header[2:4] = maxPayloadLenght + ipHeaderLenght
+        
+        if i == (numPackages - 1):
+            header[6:8] = (i * maxPayloadLenght) // 8
+        else:
+            header[6:8] = 32 + ((i * maxPayloadLenght) // 8)
 
     	# Calculamos el checksum y lo añadimos
         header[10:12] = chksum(header)
 
-    	# Añadimos los datos del payload
-
-    	# añadir MF y offset si es necesario
-    	if numPackages > 1:
-            # el offset sera multiplo de 1500 (tam max de ip datagram) excepto en el ultimo fragmento
-            dos bytes = 16 bits = 4 nums en hex FFFF
-            0x
-            # Si es el ultimo fragmento los 3 flags son 0
-            if i == (numPackages-1):
-                header[6] = 0x0
-            # 0010 , dos flags a 0 y el 3o a 1
-            else:
-                header[6] = 0x2000 + 0x
+    	# Añadimos los datos del payload al datagrama final
+        datagram = bytearray()
+        datagram += header
+        if i == (numPackages - 1):
+            datagram += data[i * maxPayloadLenght : (i+1) * maxPayloadLenght]
+        else:
+            datagram += data[i * maxPayloadLenght :]
+        
 
     	# Calculamos la MAC de destino
-
-    	# Si esta en mi subred la calculo llamando a ARPRequest con dstIP
-
-    	# Si no ARPRequest con el default gateway
-
+        if (myIP & netmask) == (dstIP & netmask):
+            dstMAC = ARPResolution(dstIP)
+    	else:
+            dstMAC = ARPResolution(defaultGW)
     	# Enviamos el datagrama con sendEthernetFrame
-
+        sendEthernetFrame(datagram, len(datagram), bytes[0x08,0x00],dstMAC)
     	i += 1
 
 
