@@ -1,7 +1,12 @@
-from ethernet import *
-from arp import *
+import socket
+import struct
+
+import logging
+from practica2.arp import *
+from practica2.ethernet import *
 from fcntl import ioctl
 import subprocess
+
 SIOCGIFMTU = 0x8921
 SIOCGIFNETMASK = 0x891b
 #Diccionario de protocolos. Las claves con los valores numéricos de protocolos de nivel superior a IP
@@ -89,35 +94,34 @@ def getDefaultGW(interface):
     return struct.unpack('!I',socket.inet_aton(dfw))[0]
 
 
+'''
+    Nombre: process_IP_datagram
+    Descripción: Esta función procesa datagramas IP recibidos.
+        Se ejecuta una vez por cada trama Ethernet recibida con EthertypeipOpts 0x0800
+        Esta función debe realizar, al menos, las siguientes tareas:
+            -Extraer los campos de la cabecera IP (includa la longitud de la cabecera)
+            -Calcular el checksum sobre los bytes de la cabecera IP
+                -Comprobar que el resultado del checksum es 0. Si es distinto el datagrama se deja de procesar
+            -Analizar los bits de de MF y el offset. Si el offset tiene un valor != 0 dejar de procesar el datagrama (no vamos a reensamblar)
+            -Loggear (usando logging.debug) el valor de los siguientes campos:
+                -Longitud de la cabecera IP
+                -IPID
+                -Valor de las banderas DF y MF
+                -Valor de offset
+                -IP origen y destino
+                -Protocolo
+            -Comprobar si tenemos registrada una función de callback de nivel superior consultando el diccionario protocols y usando como
+            clave el valor del campo protocolo del datagrama IP.
+                -En caso de que haya una función de nivel superior registrada, debe llamarse a dicha funciñón 
+                pasando los datos (payload) contenidos en el datagrama IP.
 
-    '''
-        Nombre: process_IP_datagram
-        Descripción: Esta función procesa datagramas IP recibidos.
-            Se ejecuta una vez por cada trama Ethernet recibida con EthertypeipOpts 0x0800
-            Esta función debe realizar, al menos, las siguientes tareas:
-                -Extraer los campos de la cabecera IP (includa la longitud de la cabecera)
-                -Calcular el checksum sobre los bytes de la cabecera IP
-                    -Comprobar que el resultado del checksum es 0. Si es distinto el datagrama se deja de procesar
-                -Analizar los bits de de MF y el offset. Si el offset tiene un valor != 0 dejar de procesar el datagrama (no vamos a reensamblar)
-                -Loggear (usando logging.debug) el valor de los siguientes campos:
-                    -Longitud de la cabecera IP
-                    -IPID
-                    -Valor de las banderas DF y MF
-                    -Valor de offset
-                    -IP origen y destino
-                    -Protocolo
-                -Comprobar si tenemos registrada una función de callback de nivel superior consultando el diccionario protocols y usando como
-                clave el valor del campo protocolo del datagrama IP.
-                    -En caso de que haya una función de nivel superior registrada, debe llamarse a dicha funciñón 
-                    pasando los datos (payload) contenidos en el datagrama IP.
-
-        Argumentos:
-            -us: Datos de usuario pasados desde la llamada de pcap_loop. En nuestro caso será None
-            -header: cabecera pcap_pktheader
-            -data: array de bytes con el contenido del datagrama IP
-            -srcMac: MAC origen de la trama Ethernet que se ha recibido
-        Retorno: Ninguno
-    '''
+    Argumentos:
+        -us: Datos de usuario pasados desde la llamada de pcap_loop. En nuestro caso será None
+        -header: cabecera pcap_pktheader
+        -data: array de bytes con el contenido del datagrama IP
+        -srcMac: MAC origen de la trama Ethernet que se ha recibido
+    Retorno: Ninguno
+'''
 def process_IP_datagram(us,header,data,srcMac):
 
     data = bytes(data)
