@@ -2,7 +2,7 @@ from ip import *
 import struct
 import logging
 
-from practica3.ip import registerIPProtocol, sendIPDatagram
+from ip import registerIPProtocol, sendIPDatagram
 
 UDP_HLEN = 8
 UDP_PROTO = 17

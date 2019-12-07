@@ -6,7 +6,7 @@ import struct
 import logging
 
 
-from practica3.ip import registerIPProtocol, chksum, sendIPDatagram
+from ip import registerIPProtocol, chksum, sendIPDatagram
 
 ICMP_PROTO = 1
 

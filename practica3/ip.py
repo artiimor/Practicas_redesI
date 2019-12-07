@@ -2,8 +2,8 @@ import socket
 import struct
 
 import logging
-from practica2.arp import *
-from practica2.ethernet import *
+from arp import *
+from ethernet import *
 from fcntl import ioctl
 import subprocess
 
@@ -174,7 +174,7 @@ def process_IP_datagram(us,header,data,srcMac):
 
     # Si el offset no es 0 retornamos
     if offset != 0:
-    	return
+        return
 
     # Realizacion del logueado de los campos pedidos
     logging.debug("Cabecera IP: "+str(totalLength))
@@ -185,24 +185,24 @@ def process_IP_datagram(us,header,data,srcMac):
     logging.debug("IP Origen: "+str(iporigen))
     logging.debug("IP Destino: "+str(ipdestino))
     if protocol  == 1:
-    	logging.debug("Protocolo: ICMP"
+        logging.debug("Protocolo: ICMP")
     if protocol == 6:
-    	logging.debug("Protocolo: IP")
+        logging.debug("Protocolo: IP")
     if protocol == 17:
-    	logging.debug("Protocolo: UDP"
+        logging.debug("Protocolo: UDP")
 
     protocoloBien = struct.unpack('h',protocolo)
 
     if not protocoloBien in protocols:
-    	logging.debug("No se ha encontrado un protocolo en el diccionario")
-		return
+        logging.debug("No se ha encontrado un protocolo en el diccionario")
+        return
 
-	func = protocols[protocoloBien]
+    func = protocols[protocoloBien]
 
-	# Llamamos a la funcion pasandole el payload
-	longitudCabecera = totalLength - (ihl*4)
-	payload = data[longitudCabecera:]
-	func(us, header, data[14:], iporigen)
+    # Llamamos a la funcion pasandole el payload
+    longitudCabecera = totalLength - (ihl*4)
+    payload = data[longitudCabecera:]
+    func(us, header, data[14:], iporigen)
 
 
 '''
@@ -294,13 +294,13 @@ def sendIPDatagram(dstIP,data,protocol):
     
 
     if ipOpts is not None:
-    	ipHeaderLenght = IP_MIN_HLEN + len(ipOpts)
+        ipHeaderLenght = IP_MIN_HLEN + len(ipOpts)
     else:
-    	ipHeaderLenght = IP_MIN_HLEN
+        ipHeaderLenght = IP_MIN_HLEN
 
     if ipHeaderLenght > IP_MAX_HLEN:
-    	logging.debug("ERROR, la cabecerea IP es demasiado grande")
-    	return Falseindiceopts
+        logging.debug("ERROR, la cabecerea IP es demasiado grande")
+        return Falseindiceopts
      
     header = bytearray(ipHeaderLenght)
     
@@ -348,7 +348,7 @@ def sendIPDatagram(dstIP,data,protocol):
 
     numPackages = (len(data) // maxPayloadLenght) # El numero de paquetes es la division entera
     if len(data) % maxPayloadLenght is not 0:
-    	numPackages += 1 # Si el resto no es 0 tengo que enviar otro paquete con el resto de la informacion
+        numPackages += 1 # Si el resto no es 0 tengo que enviar otro paquete con el resto de la informacion
 
     i = 0
     
@@ -357,7 +357,7 @@ def sendIPDatagram(dstIP,data,protocol):
     ########################Creamos y enviamos los paquetes##############################
     #####################################################################################
     while i < numPackages:
-    	# Construimos lo que falta de la cabecera IP
+        # Construimos lo que falta de la cabecera IP
         # Comprobaciones si es el ultimo paquete
         if i == (numPackages - 1):
             # Su longitud será lo que no hemos enviado del data mas la longitud del header
@@ -370,10 +370,10 @@ def sendIPDatagram(dstIP,data,protocol):
         else:
             header[6:8] = 32 + ((i * maxPayloadLenght) // 8)
 
-    	# Calculamos el checksum y lo añadimos
+        # Calculamos el checksum y lo añadimos
         header[10:12] = chksum(header)
 
-    	# Añadimos los datos del payload al datagrama final
+        # Añadimos los datos del payload al datagrama final
         datagram = bytearray()
         datagram += header
         if i == (numPackages - 1):
@@ -382,14 +382,14 @@ def sendIPDatagram(dstIP,data,protocol):
             datagram += data[i * maxPayloadLenght :]
         
 
-    	# Calculamos la MAC de destino
+        # Calculamos la MAC de destino
         if (myIP & netmask) == (dstIP & netmask):
             dstMAC = ARPResolution(dstIP)
-    	else:
+        else:
             dstMAC = ARPResolution(defaultGW)
-    	# Enviamos el datagrama con sendEthernetFrame
+        # Enviamos el datagrama con sendEthernetFrame
         sendEthernetFrame(datagram, len(datagram), bytes[0x08,0x00],dstMAC)
-    	i += 1
+        i += 1
 
 
     
