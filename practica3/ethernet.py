@@ -66,7 +66,6 @@ def process_Ethernet_frame(us,header,data):
 	data = bytes(data)
     # Ethernet origen los 6 primeros bytes
 	ethernet_origen = data[6:12]
-	# print('PUTA VIDA')
 	# Ethernet destino del 6 al 12
 	ethernet_destino = data[:6]
 
@@ -253,7 +252,7 @@ Retorno: 0 si todo es correcto, -1 en otro caso
 '''
 def sendEthernetFrame(data,len,etherType,dstMac):
 
-    global macAddress , handle
+    global macAddress,handle
 
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
 
@@ -265,14 +264,12 @@ def sendEthernetFrame(data,len,etherType,dstMac):
 
     # Primero comprobar que la cabecera no va a ser de longitud mayor que la permitida
 
-
-
     if len > ETH_FRAME_MAX:
     	logging.debug('Se ha intentado crear una cabecera ethernet con longitud mayor de lo permitido.')
     	return -1
 
     # Si la trama ethernet no se pasa de tamanno la construyo
-    ethernetFrame = dstMac + etherType + macAddress + data
+    ethernetFrame = dstMac + macAddress + etherType + data
     
     len = len + 2 + 6 + 6
 
@@ -290,7 +287,6 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     	# print("\n\nFRAME de puta madre: \n")
     	# print(ethernetFrame)
     	
-    print("ENVIO EL FRAME")
     # Por ultimo, llamo a pcap inject
     pcap_inject(handle, ethernetFrame, len)
 

@@ -96,11 +96,7 @@ def processARPRequest(data, MAC):
     # Del byte 0 al 5 es la direccion MAC de origen suponiendo que este sea el primer campo de la parte no comun
     
     mac_origen = data[2:8]
-    
-    # print("\n\nMAC ORIGEN:")
-    # print(MAC)
-    # print("YO PILLO: ")
-    # print(mac_origen)
+
     
     if mac_origen != MAC:
     	
@@ -113,9 +109,7 @@ def processARPRequest(data, MAC):
     ip_destino = data[18:22]
 
     myIPBien = struct.pack('!I', myIP)
-    print(data)
-    print(ip_origen)
-    print(myIPBien)
+
     # Comprobamos con la variable local
     if ip_destino != myIPBien:
     	return
@@ -207,12 +201,7 @@ def createARPRequest(ip):
     # falta la parte de la cabecera comun (type of hardware etc)
     # no se si hay que enviarla a [0xFF]*6 o a [0x00]*6 porque es una request
     frame = myMAC + bytes(struct.pack('!I', myIP)) + broadcastAddr + bytes(struct.pack('!I', ip))
-    
-    # print("framechar: "+framechar)
-    # Necesario el encoding
 
-    # frame = bytes(framechar, encoding='utf8')
-    # print("frame: "+str(frame))
     frame = ARPHeader + bytes([0x00,0x01]) + frame
 
     return frame
@@ -297,7 +286,6 @@ def initARP(interface):
 
     # Resolucion ARP gratuita (con nuestra propia IP). Si no se recibe None es que algo ha ido mal
     prueba = ARPResolution(myIP)
-    print(prueba)
     if prueba is not None:
     	logging.debug('ERROR. El ARP ya estaba inicializado')
     	return False
@@ -350,15 +338,13 @@ def ARPResolution(ip):
         if awaitingResponse is True:
     		# print("bytearray: "+str(bytes([0x08,0x06])))
             sendEthernetFrame(data, len(data), bytes([0x08,0x06]), broadcastAddr)
-            print("pregunto por:")
-            print(ip)
+
             sleep(1)
     		# print("La requestedIP es: "+str(requestedIP))
     		# print("lo que he enciado es:"+str(data))
 
     	# Si se ha recibido respuesta y es la MAC de la IP por la que preguntabamos
         else:
-            print("resolvido")
             return resolvedMAC
     
     return None

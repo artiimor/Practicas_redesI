@@ -56,9 +56,10 @@ def process_UDP_datagram(us,header,data,srcIP):
     lenght = data[4:6]
     checksum = data[6:8]
 
-    logging.debug("Puerto origen:: " + str(source_port))
-    logging.debug("Puerto destino: " + str(destination_port))
-    logging.debug("datagrama udp: " + str(data))
+    logging.debug("Puerto origen:: " + str(source_port[0]) + "." + str(source_port[1]))
+    logging.debug("Puerto destino: " + str(destination_port[0]) + "." + str(destination_port[1]))
+    logging.debug("informacion del paquete: " + str(data[8:(struct.unpack('!h',lenght)[0])]))
+    logging.debug("datagrama udp: " + str(data[:(struct.unpack('!h',lenght)[0])]))
 
     return
 
@@ -81,16 +82,25 @@ def process_UDP_datagram(us,header,data,srcIP):
 
 '''
 def sendUDPDatagram(data,dstPort,dstIP):
-    header = bytearray(UDP_HLEN)
-    header[0:2] = getUDPSourcePort()
-    header[2:4] = dstPort
-    header[4:6] = UDP_HLEN+len(data)  # longitud de la cabecera + longidud de los datos
-    header[6:8] = 0
+    # header = bytearray(UDP_HLEN)
+    
+    
+    # header[0:2] = struct.pack('!I', getUDPSourcePort())
+    # header[2:4] = struct.pack('!I', dstPort)
+    # header[4:6] = struct.pack('!I',UDP_HLEN+len(data))[-2:]  # longitud de la cabecera + longidud de los datos
+    # header[6:8] = bytes((0))
+    header = bytes()
+    header = getUDPSourcePort().to_bytes(2, byteorder='big') + dstPort.to_bytes(2, byteorder='big') + (UDP_HLEN + len(data)).to_bytes(2, byteorder='big') + (0).to_bytes(2, byteorder='big')
 
-    datagram = bytearray()
+    datagram = bytes()
     datagram += header
     datagram += data
 
+    print("\n\n\n")
+    print(header)
+    print(data)
+    print(datagram)
+    print("\n\n\n")
     sendIPDatagram(dstIP,datagram,17) # protocol = 17 porque es UDP
 
     return

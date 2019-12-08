@@ -64,6 +64,7 @@ if __name__ == "__main__":
             #Pasamos los datos de cadena a bytes
             data = data.encode()
     
+    startEthernetLevel(args.interface)
     initICMP()
     initUDP()
     if initIP(args.interface,ipOpts) == False:
