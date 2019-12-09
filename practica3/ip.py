@@ -90,7 +90,7 @@ def getDefaultGW(interface):
     '''
     p = subprocess.Popen(['ip r | grep default | awk \'{print $3}\''], stdout=subprocess.PIPE, shell=True)
     dfw = p.stdout.read().decode('utf-8')
-    print(dfw)
+    # print(dfw)
     return struct.unpack('!I',socket.inet_aton(dfw))[0]
 
 
@@ -128,58 +128,58 @@ def process_IP_datagram(us,header,data,srcMac):
 
     # version => 4 primeros bits => XXXX----
     version = data[0] >> 0x04 # Lo desplazo 4 bytes
-    print("VERSION: "+str(version))
+    # print("VERSION: "+str(version))
 
     # ihl => 4 ultimos bytes => ----XXXX
     ihl = data[0] & 0x0F # aplico mascara 0000 1111 (0x0f)
     ihl = ihl*4
-    print("ihl: "+str(ihl))
+    # print("ihl: "+str(ihl))
     # TOService es el segundo byte
     ToService = data[1]
-    print("type of service: "+str(ToService))
+    # print("type of service: "+str(ToService))
     # Total lenght son el tercer y cuarto byte
     totalLength = data[2:4]
-    print("Total lenght: "+str(totalLength[0]) +" "+str(totalLength[1]))
+    # print("Total lenght: "+str(totalLength[0]) +" "+str(totalLength[1]))
 
     # Identification son el quinto y sexto byte
     identification = data[4:6]
-    print("Identification: "+str(identification[0]) +" "+str(identification[1]))
+    # print("Identification: "+str(identification[0]) +" "+str(identification[1]))
     # Los 3 primeros bits del septimo byte. Realizamos desplazamiento despues de aplicar la mascara correspondiente
     # Nos interesan el bit 2 y 3 porque el primero esta reservado y es igual a 0
     DF = data[6] & 0x40 # -X-- ---- de data[7]
     DF = DF >> 6 # desplazo 6 a la izquierda => ---- ---X>
     MF = data[6] & 0x20 # --X- ---- de data[7]
     MF = MF >> 5 # desplazo 5 a la izquierda => ---- ---X>
-    print("DF: "+str(DF))
-    print("MF: "+str(MF))
+    # print("DF: "+str(DF))
+    # print("MF: "+str(MF))
 
     # Offset es el resto del septimo byte y el octavo => ---X XXXX 
     offset=struct.unpack('h', data[6:8])[0] & 0x1f
-    print("offset: "+str(offset))
+    # print("offset: "+str(offset))
     # time to live es el noveno byte
     TtoLive = data[8]
-    print("Time to live: "+str(TtoLive))
+    # print("Time to live: "+str(TtoLive))
 
     # protocol es el decimo byte
     protocol = data[9]
-    print("protocol "+str(protocol))
+    # print("protocol "+str(protocol))
 
     # Header Checksum son los bytes 11 y 12
     HChecksum = data[10:12]
-    print("Checksum de su pùta madre: "+str(HChecksum))
+    # print("Checksum de su pùta madre: "+str(HChecksum))
 
     # Las direcciones ip origen y destino ocupan 4 bytes y vienen a continuacion
     iporigen = data[12:16]
-    print("IP ORIGEN: "+str(iporigen[0]) + " " +str(iporigen[1]) + " "+str(iporigen[2]) + " "+str(iporigen[3]) + " ")
+    # print("IP ORIGEN: "+str(iporigen[0]) + " " +str(iporigen[1]) + " "+str(iporigen[2]) + " "+str(iporigen[3]) + " ")
     ipdestino = data[16:20]
-    print("IP DESTINO: "+str(ipdestino[0]) + " " +str(ipdestino[1]) + " "+str(ipdestino[2]) + " "+str(ipdestino[3]) + " ")
+    # print("IP DESTINO: "+str(ipdestino[0]) + " " +str(ipdestino[1]) + " "+str(ipdestino[2]) + " "+str(ipdestino[3]) + " ")
 
     # Faltan por extraer las opciones y el padding que vienen a continuacion
 
-    print(data[:ihl])
+    # print(data[:ihl])
     checksum = chksum(data[:ihl])
-    print(checksum)
-    print(HChecksum)
+    # print(checksum)
+    # print(HChecksum)
 
     # si el checksum no es 0 retornamos
     # if checksum != 0:
@@ -213,9 +213,9 @@ def process_IP_datagram(us,header,data,srcMac):
     func = protocols[protocol]
 
     # Llamamos a la funcion pasandole el payload
-    print(data)
+    # print(data)
     payload = data[ihl:]
-    print(payload)
+    # print(payload)
     func(us, header, payload, iporigen)
 
 
@@ -367,7 +367,7 @@ def sendIPDatagram(dstIP,data,protocol):
             if ipOpts is not None:
                 header += ipOpts.to_bytes(len(ipOpts)/4, byteorder='big')
             checksum = chksum(header)
-            print(struct.pack('!H',checksum))
+            # print(struct.pack('!H',checksum))
             header[10:12] = struct.pack('!H',checksum)
         else:
             # Primer byte. version y la longitud total de la cabecera  
@@ -414,7 +414,7 @@ def sendIPDatagram(dstIP,data,protocol):
             dstMAC = ARPResolution(defaultGW)
         # Enviamos el datagrama con sendEthernetFrame
 
-        print(datagram)
+        # print(datagram)
         sendEthernetFrame(datagram, len(datagram), bytes([0x08,0x00]),dstMAC)
         i += 1
 

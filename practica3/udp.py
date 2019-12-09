@@ -96,11 +96,11 @@ def sendUDPDatagram(data,dstPort,dstIP):
     datagram += header
     datagram += data
 
-    print("\n\n\n")
-    print(header)
-    print(data)
-    print(datagram)
-    print("\n\n\n")
+    # print("\n\n\n")
+    # print(header)
+    # print(data)
+    # print(datagram)
+    # print("\n\n\n")
     sendIPDatagram(dstIP,datagram,17) # protocol = 17 porque es UDP
 
     return

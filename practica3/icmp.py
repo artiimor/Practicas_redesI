@@ -47,9 +47,9 @@ icmp_send_times = {}
 
 '''
 def process_ICMP_message(us,header,data,srcIp):
-    if chksum(data) != 0:
-        logging.debug("[ERROR] process_ICMP_message ha calculado un checksum distinto de 0")
-        return
+    # if chksum(data) != 0:
+    #    logging.debug("[ERROR] process_ICMP_message ha calculado un checksum distinto de 0")
+    #    return
 
     tipo = data[0]
     codigo = data[1]
@@ -59,13 +59,32 @@ def process_ICMP_message(us,header,data,srcIp):
 
     if tipo == ICMP_ECHO_REQUEST_TYPE:
         # Enviamos un reply
-        sendICMPMessage(data,ICMP_ECHO_REPLY_TYPE,0,header[4:6],header[6:8],srcIP)
+        # print("header: "+str(header))
+        # print("data: "+str(data))
+        # print("TIPO: "+str(data[0]))
+        # print("del 4 al 6: "+str(data[4])+" "+str(data[5]))
+        # print("del 4 al 6: ")
+        # print(struct.unpack('!h',data[4:6])[0])
+        # print("del 6 al 8: "+str(data[6])+" "+str(data[7]))
+        # print(struct.unpack('!h',data[6:8])[0])
+        # print("DESTINO: ")
+        # print(struct.unpack('!I',srcIp))
+        # print((struct.unpack('!I',srcIp)[0]).to_bytes(4, byteorder='big'))
+        sendICMPMessage(data,ICMP_ECHO_REPLY_TYPE,0,struct.unpack('!h',data[4:6])[0],struct.unpack('!h',data[6:8])[0],struct.unpack('!I',srcIp)[0])
 
-    elif tipo == ICMP_ECHO_REQUEST_TYPE:
+    elif tipo == ICMP_ECHO_REPLY_TYPE:
         with timeLock:
-            tiempo_dict = icmp_send_times[srcIp+data[4:6]+data[6:8]]
+        	# print("\n\n\nCOSAS SUMADAS PARA EL DICCIONARIO puto again FUCCCC: ")
+        	# print(struct.unpack('!I',srcIp)[0])
+        	# print(struct.unpack('!h',data[4:6])[0])
+        	# print(struct.unpack('!h',data[6:8])[0])
+        	# print("\n\n\n")
+        	tiempo_dict = icmp_send_times[struct.unpack('!I',srcIp)[0]+struct.unpack('!h',data[4:6])[0]+struct.unpack('!h',data[6:8])[0]]
 
-        tiempo_real = tiempo_dict - header.ts
+        # print(header.ts.tv_sec)
+        # print(tiempo_dict)
+
+        tiempo_real = header.ts.tv_sec - tiempo_dict
 
         print("ESTIMACION DE RTT: "+str(tiempo_real))
 
@@ -102,21 +121,36 @@ def process_ICMP_message(us,header,data,srcIp):
 '''
 def sendICMPMessage(data,type,code,icmp_id,icmp_seqnum,dstIP):
 
-    header = bytearray(8)
-    header[0] = type
-    header[1] = code
-    header[4:6] = id
-    header[6:8] = icmp_seqnum
+    # header[0] = type
+    # header[1] = code
+    # header[2:4] = checksum
+    # header[4:6] = id
+    # header[6:8] = icmp_seqnum
 
-    datagram = bytearray()
+    header = bytearray()
+    header += type.to_bytes(1, byteorder='big')
+    header += code.to_bytes(1, byteorder='big') 
+    header += b'\x00\x00' #Por defecto 0
+    header += icmp_id.to_bytes(2, byteorder='big') 
+    header += icmp_seqnum.to_bytes(2, byteorder='big')
 
+    datagram = bytes()
     datagram += header
     datagram += data
 
-    datagram[2:4] = chksum(datagram)  # Ponemos el checkusum al final
+    checksum = chksum(datagram)
+    header[2:4] = struct.pack('!H',checksum)
+
     if type == ICMP_ECHO_REQUEST_TYPE:
         with timeLock:
-            icmp_send_times[dstIP+icmp_id,icmp_seqnum] = time.time()
+        	# print("\n\n\nCOSAS SUMADAS PARA EL DICCIONARIO: ")
+        	# print(dstIP)
+        	# print(icmp_id)
+        	# print(icmp_seqnum)
+        	# print("\n\n\n")
+        	icmp_send_times[dstIP+icmp_id+icmp_seqnum] = time.time()
+
+    # print(datagram)
 
     sendIPDatagram(dstIP, datagram, 1)  # protocol = 1 porque es icmp
   
