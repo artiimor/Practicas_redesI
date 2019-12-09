@@ -1,6 +1,10 @@
 import socket
 import struct
 
+import binascii
+import functools
+
+
 import logging
 from arp import *
 from ethernet import *
@@ -154,7 +158,11 @@ def process_IP_datagram(us,header,data,srcMac):
     # print("MF: "+str(MF))
 
     # Offset es el resto del septimo byte y el octavo => ---X XXXX 
-    offset=struct.unpack('h', data[6:8])[0] & 0x1f
+    offset=int(binascii.hexlify(data[6:8]),16) & 0x1F
+
+    print("\n\n\n")
+    print(offset)
+    print("\n\n\n")
     # print("offset: "+str(offset))
     # time to live es el noveno byte
     TtoLive = data[8]
@@ -316,7 +324,7 @@ def sendIPDatagram(dstIP,data,protocol):
         logging.debug("ERROR, la cabecerea IP es demasiado grande")
         return Falseindiceopts
      
-    header = bytearray()
+    
 
     #####################################################################################
     ########################Calculamos el numero de paquetes#############################
@@ -334,15 +342,18 @@ def sendIPDatagram(dstIP,data,protocol):
         numPackages += 1 # Si el resto no es 0 tengo que enviar otro paquete con el resto de la informacion
 
     i = 0
+    print("NUMERO DE PAQUETES DE LOS COJONES: "+str(numPackages))
 
     #####################################################################################
     ########################Creamos y enviamos los paquetes##############################
     #####################################################################################
     while i < numPackages:
+        # Me da igual que el programa sea mas ineficiente o lo que pollas pase, no voy a optimizar esto
+
+        header = bytearray()
         # Construimos lo que falta de la cabecera IP
         # Comprobaciones si es el ultimo paquete
-        if i == (numPackages - 1):
-            
+        if i == (numPackages-1):
             # Primer byte. version y la longitud total de la cabecera  
             header += ((0x40)+(ipHeaderLenght//4)).to_bytes(1, byteorder='big')
             # Segundo byte. Siempre 0
@@ -352,7 +363,15 @@ def sendIPDatagram(dstIP,data,protocol):
             # Quinto y sexto la identificacion
             header += bytes([0x12,0x34])
             # Ponemos a 0 los flags y el puto offser ATENTO A ESTO OSTIA PUTA QUE VAS A TENER QUE CAMBIARLO, NO ME SEAS PUTO SUBNORMAL
-            header += b'\x00\x00' #Por defecto 0
+            # Si solo hay un paquete todo a 0
+            if numPackages == 1:
+                header += b'\x00\x00' #Por defecto 0
+            # Si no, se trata del ultimo paquete. Los flags a 0, pero hay un offset
+            else: 
+                offset = (i * maxPayloadLenght)//8
+                print(offset.to_bytes(2, byteorder='big'))
+                # los flags son 001
+                header += offset.to_bytes(2, byteorder='big')
             # noveno byte en TTL. Por defecto es 64
             header += (64).to_bytes(1, byteorder='big')
             # Decimo byte el protocolo
@@ -365,7 +384,7 @@ def sendIPDatagram(dstIP,data,protocol):
             header += dstIP.to_bytes(4, byteorder='big')
             # Si hay ipOpts lo añadimos
             if ipOpts is not None:
-                header += ipOpts.to_bytes(len(ipOpts)/4, byteorder='big')
+                header += ipOpts
             checksum = chksum(header)
             # print(struct.pack('!H',checksum))
             header[10:12] = struct.pack('!H',checksum)
@@ -377,17 +396,24 @@ def sendIPDatagram(dstIP,data,protocol):
             # Su longitud será lo que no hemos enviado del data mas la longitud del header
             header += (maxPayloadLenght + ipHeaderLenght).to_bytes(2, byteorder='big')
             # Quinto y sexto la identificacion
-            header += (0x1234).to_bytes(2, byteorder='big')
-            if i == (numPackages - 1):
-                header += ((i * maxPayloadLenght) // 8).to_bytes(2, byteorder='big')
-            else:
-                header += (32 + ((i * maxPayloadLenght) // 8)).to_bytes(2, byteorder='big')
+            header += bytes([0x12,0x34])
+            # if i == (numPackages):
+            #    header += ((i * maxPayloadLenght) // 8).to_bytes(2, byteorder='big')
+            # else:
+            #    header += (32 + ((i * maxPayloadLenght) // 8)).to_bytes(2, byteorder='big')
+            # Ponemos a 0 los flags y el puto offset ATENTO A ESTO OSTIA PUTA QUE VAS A TENER QUE CAMBIARLO, NO ME SEAS PUTO SUBNORMAL
+            # El offset en este caso siempre va a ser esto
+            offset = (i * maxPayloadLenght)//8
+            # los flags son 001
+            flags = b'\x20\x00'
+
+            header += flags + offset.to_bytes(2, byteorder='big')
             # noveno byte en TTL. Por defecto es 64
             header += (64).to_bytes(1, byteorder='big')
             # Decimo byte el protocolo
             header += protocol.to_bytes(1, byteorder='big')
             # Calculamos el checksum y lo añadimos
-            header += chksum(header).to_bytes(2, byteorder='big')
+            header += b'\x00\x00' #Por defecto 0
             # IPs origen y destino
             # TODO revisar el pack
             header +=  myIP.to_bytes(4, byteorder='big')
@@ -395,25 +421,28 @@ def sendIPDatagram(dstIP,data,protocol):
             
             # Si hay ipOpts lo añadimos
             if ipOpts is not None:
-                header += ipOpts.to_bytes(len(ipOpts)/4, byteorder='big')
+                header += ipOpts
+            checksum = chksum(header)
+            # print(struct.pack('!H',checksum))
+            header[10:12] = struct.pack('!H',checksum)
         # Añadimos los datos del payload al datagrama final
         datagram = bytearray()
         datagram += header
         if numPackages == 1:
+            print("yeah")
             datagram += data
-        elif i == (numPackages - 1):
-            datagram += data[i * maxPayloadLenght : (i+1) * maxPayloadLenght]
-        else:
+        elif i == (numPackages):
             datagram += data[i * maxPayloadLenght :]
+        else:
+            datagram += data[i * maxPayloadLenght : (i+1) * maxPayloadLenght]
         
-
         # Calculamos la MAC de destino
         if (myIP & netmask) == (dstIP & netmask):
             dstMAC = ARPResolution(dstIP)
         else:
             dstMAC = ARPResolution(defaultGW)
+            print("HERE WE ARE :)")
         # Enviamos el datagrama con sendEthernetFrame
-
         # print(datagram)
         sendEthernetFrame(datagram, len(datagram), bytes([0x08,0x00]),dstMAC)
         i += 1

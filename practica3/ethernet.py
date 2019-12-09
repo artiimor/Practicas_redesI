@@ -265,9 +265,8 @@ def sendEthernetFrame(data,len,etherType,dstMac):
     # Primero comprobar que la cabecera no va a ser de longitud mayor que la permitida
 
     if len > ETH_FRAME_MAX:
-    	logging.debug('Se ha intentado crear una cabecera ethernet con longitud mayor de lo permitido.')
+    	logging.debug('Se ha intentado crear una cabecera ethernet con longitud mayor de lo permitido: '+str(len)+".\nSiendo lo maximo: "+str(ETH_FRAME_MAX))
     	return -1
-
     # Si la trama ethernet no se pasa de tamanno la construyo
     ethernetFrame = dstMac + macAddress + etherType + data
     
